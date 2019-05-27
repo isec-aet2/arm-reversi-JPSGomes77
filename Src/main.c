@@ -47,17 +47,19 @@
 #define VREF                  3300
 bool flagTimer=0;
 bool touchScreenFlag=0;
+volatile uint8_t jogador;
 uint32_t ConvertedValue=0;
 TS_StateTypeDef TS_State;
-
-char tabuleiroInicial[8][8]={"        ",
-        					 "        ",
-							 "        ",
-							 "   xo   ",
-							 "   ox   ",
-							 "        ",
-							 "        ",
-							 "        "};
+uint8_t colunaCelula;
+uint8_t linhaCelula;
+int   tabuleiroInicial[8][8]={{00000000},
+							  {00000000},
+							  {00000000},
+							  {00000000},
+							  {00000000},
+							  {00000000},
+							  {00000000},
+							  {00000000}};
 
 /* USER CODE END PD */
 
@@ -75,6 +77,7 @@ DSI_HandleTypeDef hdsi;
 
 LTDC_HandleTypeDef hltdc;
 
+TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim6;
 
 SDRAM_HandleTypeDef hsdram1;
@@ -91,12 +94,14 @@ static void MX_DMA2D_Init(void);
 static void MX_DSIHOST_DSI_Init(void);
 static void MX_FMC_Init(void);
 static void MX_LTDC_Init(void);
+static void MX_TIM1_Init(void);
 static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 static void LCD_Config(void);
 static void displayTemperature();
 static void displayGame();
-void detectBoardTouch();
+void detectBoardTouch(volatile uint8_t*);
+void jogo();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -156,6 +161,7 @@ int main(void)
   MX_DSIHOST_DSI_Init();
   MX_FMC_Init();
   MX_LTDC_Init();
+  MX_TIM1_Init();
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
 
@@ -178,6 +184,7 @@ int main(void)
 
 
   displayGame();
+  jogador=1;
 
   /* USER CODE END 2 */
 
@@ -188,9 +195,10 @@ int main(void)
 
 	  displayTemperature();
 
-	  detectBoardTouch();
 
+	  //jogo();
 
+	  detectBoardTouch(&jogador);
 
 
 
@@ -547,6 +555,53 @@ static void MX_LTDC_Init(void)
 }
 
 /**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM1_Init(void)
+{
+
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 0;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_DOWN;
+  htim1.Init.Period = 9999;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
+
+}
+
+/**
   * @brief TIM6 Initialization Function
   * @param None
   * @retval None
@@ -666,13 +721,10 @@ static void MX_GPIO_Init(void)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-
-
-
 	if(GPIO_Pin == GPIO_PIN_13)
 	{
-		BSP_TS_GetState(&TS_State);
 		touchScreenFlag=1;
+		BSP_TS_GetState(&TS_State);
 	}
 }
 
@@ -730,6 +782,8 @@ static void displayGame()
 
 
 
+	 BSP_LCD_SetTextColor(LCD_COLOR_LIGHTGRAY);
+	 BSP_LCD_FillRect(10,50,400,400);
 
 
 
@@ -763,36 +817,63 @@ static void displayTemperature()
 	  		sprintf(string, "Int. Temp:%ld'C", JTemp);
 	  		BSP_LCD_DisplayStringAt(0,LINE(29), (uint8_t *)string, RIGHT_MODE);
 	  		BSP_LCD_ClearStringLine(30);
-	 }
+	}
 }
 
-void detectBoardTouch()
+void detectBoardTouch(volatile uint8_t* jk)
 {
-//Esta função detecta em que célula do tabuleiro carregámos e preenche a célula com um quadrado
+	//Esta função detecta em que célula do tabuleiro carregámos e preenche a célula com um quadrado
 
-	uint16_t pos_x;
-	uint16_t pos_y;
+	uint16_t pos_x=0;
+	uint16_t pos_y=0;
 
-	  if(touchScreenFlag==1)
-	  {
-		  touchScreenFlag=0;
+	if(touchScreenFlag==1)
+	{
+		touchScreenFlag=0;
 
-		  if(TS_State.touchX[0]>10 && TS_State.touchX[0]<410 && TS_State.touchY[0]>50 && TS_State.touchY[0]<450)
-		  {
-			  // TS_State.touchX[0]-10 distância até ao limite do lado esquerdo do tabuleiro
-			  // (TS_State.touchX[0]-10)/50) número de quadrados até ao lado esquerdo do tabuleiro
-			  // 10+(TS_State.touchX[0]-10)/50)*50) multiplicamos por 50 para dar a distância até à celula pretendida
-			  pos_x=10+(((TS_State.touchX[0]-10)/50)*50);
-			  pos_y=50+(((TS_State.touchY[0]-50)/50)*50);
-			  BSP_LCD_SetTextColor(LCD_COLOR_RED);//alterar para cada jogador
-			 // BSP_LCD_FillRect(pos_x,pos_y,50,50);
-			  BSP_LCD_FillCircle(pos_x+25,pos_y+25,20);
+		if(TS_State.touchX[0]>10 && TS_State.touchX[0]<410 && TS_State.touchY[0]>50 && TS_State.touchY[0]<450)
+		{
+			// TS_State.touchX[0]-10 distância até ao limite do lado esquerdo do tabuleiro
+			// (TS_State.touchX[0]-10)/50) número de quadrados até ao lado esquerdo do tabuleiro
+			// 10+(TS_State.touchX[0]-10)/50)*50) multiplicamos por 50 para dar a distância até à celula pretendida
+			colunaCelula = (TS_State.touchX[0]-10)/50;
+			linhaCelula  = (TS_State.touchY[0]-50)/50;
 
+			if(tabuleiroInicial[linhaCelula][colunaCelula]==0)
+			{
+				tabuleiroInicial[linhaCelula][colunaCelula]= *jk; //actualiza o tabuleiro
 
-		  }
-	  }
+				pos_x=10+(colunaCelula)*50;
+				pos_y=50+(linhaCelula)*50;
+
+				if(*jk==1)
+				{
+					BSP_LCD_SetTextColor(LCD_COLOR_RED);
+					BSP_LCD_FillCircle(pos_x+25,pos_y+25,20);
+					jogador=2;
+					return;
+				}
+
+				if(*jk==2)
+				{
+					BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+					BSP_LCD_FillCircle(pos_x+25,pos_y+25,20);
+					jogador=1;
+					return;
+				}
+			}
+		}
+	}
+}
+/*..
+void jogo()
+{
+
+	detectBoardTouch(jogador);
+
 
 }
+*/
 
 
 /* USER CODE END 4 */
