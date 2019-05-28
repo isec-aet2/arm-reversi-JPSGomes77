@@ -45,21 +45,28 @@
 #define VSENS_AT_AMBIENT_TEMP  760    /* VSENSE value (mv) at ambient temperature */
 #define AVG_SLOPE               25    /* Avg_Solpe multiply by 10 */
 #define VREF                  3300
-bool flagTimer=0;
+
+bool flagTimer6_temperature=0;
+bool flagTimer7_gametime=0;
+bool flagTimer7_roundtimeleft=0;
+uint8_t minute=0;
+uint8_t second=0;
 bool touchScreenFlag=0;
-volatile uint8_t jogador;
+uint8_t jogador;
 uint32_t ConvertedValue=0;
 TS_StateTypeDef TS_State;
 uint8_t colunaCelula;
 uint8_t linhaCelula;
-int   tabuleiroInicial[8][8]={{00000000},
-							  {00000000},
-							  {00000000},
-							  {00000000},
-							  {00000000},
-							  {00000000},
-							  {00000000},
-							  {00000000}};
+uint8_t timeLeft=20;
+int   tabuleiroInicial[8][8]={{0,0,0,0,0,0,0,0},
+							  {0,0,0,0,0,0,0,0},
+							  {0,0,0,0,0,0,0,0},
+							  {0,0,0,1,2,0,0,0},
+							  {0,0,0,2,1,0,0,0},
+							  {0,0,0,0,0,0,0,0},
+							  {0,0,0,0,0,0,0,0},
+							  {0,0,0,0,0,0,0,0}};
+
 
 /* USER CODE END PD */
 
@@ -77,8 +84,8 @@ DSI_HandleTypeDef hdsi;
 
 LTDC_HandleTypeDef hltdc;
 
-TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim6;
+TIM_HandleTypeDef htim7;
 
 SDRAM_HandleTypeDef hsdram1;
 
@@ -94,14 +101,23 @@ static void MX_DMA2D_Init(void);
 static void MX_DSIHOST_DSI_Init(void);
 static void MX_FMC_Init(void);
 static void MX_LTDC_Init(void);
-static void MX_TIM1_Init(void);
 static void MX_TIM6_Init(void);
+static void MX_TIM7_Init(void);
 /* USER CODE BEGIN PFP */
 static void LCD_Config(void);
 static void displayTemperature();
 static void displayGame();
-void detectBoardTouch(volatile uint8_t*);
+void detectBoardTouch(uint8_t*);
 void jogo();
+void showGameTime();
+void showRoundTimeLeft();
+void detectMenuTouch();
+void LoadInitialBoard();
+void checkAvailable(uint8_t player);
+void checkAdjacent(uint8_t player, uint8_t opponent,uint8_t i, uint8_t j,bool flagJogada);
+void checkMoreOponentPieces(uint8_t player, uint8_t opponent,int16_t linha, int16_t coluna, int16_t incrLinha, int16_t incrColuna,bool flagJogada);
+void turnPieces(uint8_t auxPlayer,uint8_t auxOpponent, int8_t linhaCelula, int8_t colunaCelula);
+void drawPieces(uint8_t i, uint8_t j,uint8_t player);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -111,8 +127,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim->Instance == TIM6)
 	{
-		flagTimer=1;
+		flagTimer6_temperature=1;
 	}
+
+	if(htim->Instance == TIM7)
+	{
+		flagTimer7_gametime=1;
+		flagTimer7_roundtimeleft=1;
+	}
+
+
 }
 
 
@@ -161,8 +185,8 @@ int main(void)
   MX_DSIHOST_DSI_Init();
   MX_FMC_Init();
   MX_LTDC_Init();
-  MX_TIM1_Init();
   MX_TIM6_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
 
   //Inicializaçãoo dos LEDS e USER BUTTON
@@ -178,12 +202,14 @@ int main(void)
   //Inicialização do ADC1
   HAL_ADC_Start_IT(&hadc1);
 
-  //Inicialização dos Timer 6
+  //Inicialização dos Interrupts dos Timers 6 e 7
   HAL_TIM_Base_Start_IT(&htim6);
+  HAL_TIM_Base_Start_IT(&htim7);
 
 
 
   displayGame();
+  LoadInitialBoard();
   jogador=1;
 
   /* USER CODE END 2 */
@@ -194,8 +220,9 @@ int main(void)
   {
 
 	  displayTemperature();
-
-
+	  showGameTime();
+	  showRoundTimeLeft();
+	  detectMenuTouch();
 	  //jogo();
 
 	  detectBoardTouch(&jogador);
@@ -555,53 +582,6 @@ static void MX_LTDC_Init(void)
 }
 
 /**
-  * @brief TIM1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM1_Init(void)
-{
-
-  /* USER CODE BEGIN TIM1_Init 0 */
-
-  /* USER CODE END TIM1_Init 0 */
-
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM1_Init 1 */
-
-  /* USER CODE END TIM1_Init 1 */
-  htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 0;
-  htim1.Init.CounterMode = TIM_COUNTERMODE_DOWN;
-  htim1.Init.Period = 9999;
-  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM1_Init 2 */
-
-  /* USER CODE END TIM1_Init 2 */
-
-}
-
-/**
   * @brief TIM6 Initialization Function
   * @param None
   * @retval None
@@ -621,7 +601,7 @@ static void MX_TIM6_Init(void)
   htim6.Instance = TIM6;
   htim6.Init.Prescaler = 9999;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 9999;
+  htim6.Init.Period = 19999;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
@@ -636,6 +616,44 @@ static void MX_TIM6_Init(void)
   /* USER CODE BEGIN TIM6_Init 2 */
 
   /* USER CODE END TIM6_Init 2 */
+
+}
+
+/**
+  * @brief TIM7 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM7_Init(void)
+{
+
+  /* USER CODE BEGIN TIM7_Init 0 */
+
+  /* USER CODE END TIM7_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM7_Init 1 */
+
+  /* USER CODE END TIM7_Init 1 */
+  htim7.Instance = TIM7;
+  htim7.Init.Prescaler = 9999;
+  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim7.Init.Period = 9999;
+  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM7_Init 2 */
+
+  /* USER CODE END TIM7_Init 2 */
 
 }
 
@@ -750,9 +768,23 @@ static void displayGame()
 	 BSP_LCD_DisplayStringAt(0,LINE(0), (uint8_t *)string, CENTER_MODE);
 
 	 sprintf(string, "MENU");
-	 BSP_LCD_DisplayStringAt(200,LINE(9), (uint8_t *)string, CENTER_MODE);
+	 BSP_LCD_DisplayStringAt(205,LINE(9), (uint8_t *)string, CENTER_MODE);
 	 BSP_LCD_SetTextColor(LCD_COLOR_BLUE);
 	 BSP_LCD_DrawRect(420,205,370,245);
+
+	 BSP_LCD_DrawRect(455,250,300,50); //botão 1 do menu
+	 sprintf(string, "Human vs. Human");
+	 BSP_LCD_DisplayStringAt(205,LINE(11), (uint8_t *)string, CENTER_MODE);
+
+	 BSP_LCD_DrawRect(455,310,300,50); //botão 2 do menu
+	 sprintf(string, "Human vs. ARM");
+	 BSP_LCD_DisplayStringAt(205,LINE(11)+60, (uint8_t *)string, CENTER_MODE);
+
+	 BSP_LCD_DrawRect(455,370,300,50);//botão 3 do menu
+	 sprintf(string, "Highscores");
+	 BSP_LCD_DisplayStringAt(205,LINE(16), (uint8_t *)string, CENTER_MODE);
+
+
 
 	 BSP_LCD_SetTextColor(LCD_COLOR_DARKBLUE);
 	 sprintf(string, "Game Information");
@@ -766,17 +798,17 @@ static void displayGame()
 	 BSP_LCD_DisplayStringAt(200,LINE(7), (uint8_t *)string, CENTER_MODE);
 
 
-	 sprintf(string, "Game Time: 1 s");
-	 BSP_LCD_DisplayStringAt(200,LINE(8), (uint8_t *)string, CENTER_MODE);
+	 //sprintf(string, "Game Time: 0 s");
+	 //BSP_LCD_DisplayStringAt(200,LINE(8), (uint8_t *)string, CENTER_MODE);
 
 
 	 sprintf(string, "Realizado por: Joao Gomes");
 	 BSP_LCD_DisplayStringAt(10,LINE(29), (uint8_t *)string, LEFT_MODE);
 
 
-	 BSP_LCD_SetTextColor(LCD_COLOR_DARKRED);
-	 sprintf(string, "Player 1 round: 20s left");
-	 BSP_LCD_DisplayStringAt(10,LINE(2), (uint8_t *)string, LEFT_MODE);
+	 //BSP_LCD_SetTextColor(LCD_COLOR_DARKRED);
+	 //sprintf(string, "Player 1 round: 20s left");
+	// BSP_LCD_DisplayStringAt(10,LINE(2), (uint8_t *)string, LEFT_MODE);
 
 
 
@@ -806,11 +838,11 @@ static void displayTemperature()
 	long int JTemp;
 	char string[100];
 
-	if(flagTimer==1)
+	if(flagTimer6_temperature==1)
 	{
+			flagTimer6_temperature=0;
 			BSP_LED_Toggle(LED_GREEN);
 			BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
-	  		flagTimer=0;
 	  		BSP_LCD_SetFont(&Font16);
 	  		ConvertedValue=HAL_ADC_GetValue(&hadc1); //get value
 	  		JTemp = ((((ConvertedValue * VREF)/MAX_CONVERTED_VALUE) - VSENS_AT_AMBIENT_TEMP) * 10 / AVG_SLOPE) + AMBIENT_TEMP;
@@ -820,12 +852,78 @@ static void displayTemperature()
 	}
 }
 
-void detectBoardTouch(volatile uint8_t* jk)
-{
-	//Esta função detecta em que célula do tabuleiro carregámos e preenche a célula com um quadrado
 
+void showGameTime()
+{
+
+	char string[100];
+
+	if(flagTimer7_gametime==1)
+	{
+		flagTimer7_gametime=0;
+		second++;
+		if(second==60)
+		{
+			second=0;
+			minute++;
+		}
+		BSP_LCD_SetFont(&Font16);
+		BSP_LCD_SetTextColor(LCD_COLOR_BLUE);
+		sprintf(string, "Game Time: %im%2is",minute,second);
+		BSP_LCD_DisplayStringAt(200,LINE(8), (uint8_t *)string, CENTER_MODE);
+
+	}
+}
+
+void showRoundTimeLeft()
+{
+
+	char string[50];
+
+	if(flagTimer7_roundtimeleft==1)
+	{
+		flagTimer7_roundtimeleft=0;
+		timeLeft--;
+		if(timeLeft==0)
+			timeLeft=0;
+
+			BSP_LCD_SetFont(&Font16);
+			BSP_LCD_SetTextColor(LCD_COLOR_BLUE);
+			sprintf(string, "%2is left",timeLeft);
+			BSP_LCD_DisplayStringAt(200,LINE(2), (uint8_t *)string, LEFT_MODE);
+
+	}
+}
+
+
+
+
+void detectBoardTouch(uint8_t* jk)
+{
+	//Esta função detecta em que célula do tabuleiro carregámos e preenche a célula
+	char string[20];
 	uint16_t pos_x=0;
 	uint16_t pos_y=0;
+	uint8_t auxPlayer;
+	uint8_t auxOpponent;
+
+	if(*jk==1)
+	{
+		BSP_LCD_SetFont(&Font16);
+		BSP_LCD_SetTextColor(LCD_COLOR_RED);
+		sprintf(string, "Player 1 round:");
+		BSP_LCD_DisplayStringAt(30,LINE(2), (uint8_t *)string, LEFT_MODE);
+		BSP_LCD_FillCircle(20,37,5);
+	}
+	if(*jk==2)
+	{
+		BSP_LCD_SetFont(&Font16);
+		BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+		sprintf(string, "Player 2 round:");
+		BSP_LCD_DisplayStringAt(30,LINE(2), (uint8_t *)string, LEFT_MODE);
+		BSP_LCD_FillCircle(20,37,5);
+	}
+
 
 	if(touchScreenFlag==1)
 	{
@@ -839,18 +937,30 @@ void detectBoardTouch(volatile uint8_t* jk)
 			colunaCelula = (TS_State.touchX[0]-10)/50;
 			linhaCelula  = (TS_State.touchY[0]-50)/50;
 
-			if(tabuleiroInicial[linhaCelula][colunaCelula]==0)
+			if(tabuleiroInicial[linhaCelula][colunaCelula]==-(*jk))
 			{
-				tabuleiroInicial[linhaCelula][colunaCelula]= *jk; //actualiza o tabuleiro
+				tabuleiroInicial[linhaCelula][colunaCelula]= *jk; //coloca peça na variavel tabuleiro
 
-				pos_x=10+(colunaCelula)*50;
+				auxPlayer=(*jk);
+				if(auxPlayer==1)
+					auxOpponent=2;
+
+				else if(auxPlayer==2)
+					auxOpponent=1;
+
+				pos_x=10+(colunaCelula)*50; //posição no LCD
 				pos_y=50+(linhaCelula)*50;
+
+				turnPieces(auxPlayer,auxOpponent,linhaCelula,colunaCelula);
+
+
 
 				if(*jk==1)
 				{
 					BSP_LCD_SetTextColor(LCD_COLOR_RED);
 					BSP_LCD_FillCircle(pos_x+25,pos_y+25,20);
 					jogador=2;
+					checkAvailable(jogador);
 					return;
 				}
 
@@ -859,21 +969,224 @@ void detectBoardTouch(volatile uint8_t* jk)
 					BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
 					BSP_LCD_FillCircle(pos_x+25,pos_y+25,20);
 					jogador=1;
+					checkAvailable(jogador);
 					return;
 				}
 			}
 		}
 	}
 }
-/*..
-void jogo()
-{
 
-	detectBoardTouch(jogador);
+
+void detectMenuTouch()
+{
+	// BSP_LCD_DrawRect(420,205,370,245);
+	 if(touchScreenFlag==1)
+	 {
+		 touchScreenFlag=0;
+		 if(TS_State.touchX[0]>455 && TS_State.touchX[0]<755 && TS_State.touchY[0]>250 && TS_State.touchY[0]<300)
+		 {
+			 BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+			 BSP_LCD_FillRect(455,250,300,50);
+		 }
+
+		 if(TS_State.touchX[0]>455 && TS_State.touchX[0]<755 && TS_State.touchY[0]>310 && TS_State.touchY[0]<360)
+		 {
+			 BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+			 BSP_LCD_FillRect(455,310,300,50);
+		 }
+
+		 if(TS_State.touchX[0]>455 && TS_State.touchX[0]<755 && TS_State.touchY[0]>370 && TS_State.touchY[0]<420)
+		 {
+			 BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+			 BSP_LCD_FillRect(455,370,300,50);
+		 }
+
+	 }
+}
+
+
+void LoadInitialBoard()
+{
+	uint8_t i,j;
+	uint16_t linha=0;
+	uint16_t coluna=0;
+
+	for(i=0;i<8;i++)
+	{
+		for(j=0;j<8;j++)
+		{
+
+			linha  = 50+50*i;
+			coluna = 10+50*j;
+			if(tabuleiroInicial[i][j]==1)
+			{
+				BSP_LCD_SetTextColor(LCD_COLOR_RED);
+				BSP_LCD_FillCircle(coluna+25,linha+25,20);
+			}
+
+			if(tabuleiroInicial[i][j]==2)
+			{
+				BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+				BSP_LCD_FillCircle(coluna+25,linha+25,20);
+			}
+		}
+	}
+	checkAvailable(1);
+	checkAvailable(2);
+}
+
+
+void checkAvailable(uint8_t player)
+{
+	uint8_t i,j;
+	uint8_t opponent;
+
+	if(player==1)
+		opponent=2;
+	else if(player==2)
+		opponent=1;
+
+
+
+	for(i=0;i<8;i++)
+	{
+			for(j=0;j<8;j++)
+			{
+				if(tabuleiroInicial[i][j]==player)
+				{
+					checkAdjacent(player,opponent,i,j,0);
+				}
+			}
+	}
 
 
 }
-*/
+
+void checkAdjacent(uint8_t player, uint8_t opponent,uint8_t i, uint8_t j,bool flagJogada)
+{
+	if(tabuleiroInicial[i+1][j]==opponent)
+	{
+		checkMoreOponentPieces(player,opponent,i+2,j,1,0,flagJogada);
+	}
+	if(tabuleiroInicial[i-1][j]==opponent)
+	{
+		checkMoreOponentPieces(player,opponent,i-2,j,-1,0,flagJogada);
+	}
+	if(tabuleiroInicial[i][j+1]==opponent)
+	{
+		checkMoreOponentPieces(player,opponent,i,j+2,0,1,flagJogada);
+	}
+	if(tabuleiroInicial[i][j-1]==opponent)
+	{
+		checkMoreOponentPieces(player,opponent,i,j-2,0,-1,flagJogada);
+	}
+	if(tabuleiroInicial[i+1][j+1]==opponent)
+	{
+		checkMoreOponentPieces(player,opponent,i+2,j+2,1,1,flagJogada);
+	}
+	if(tabuleiroInicial[i-1][j-1]==opponent)
+	{
+		checkMoreOponentPieces(player,opponent,i-2,j-2,-1,-1,flagJogada);
+	}
+	if(tabuleiroInicial[i-1][j+1]==opponent)
+	{
+		checkMoreOponentPieces(player,opponent,i-2,j+2,-1,1,flagJogada);
+	}
+	if(tabuleiroInicial[i+1][j-1]==opponent)
+	{
+		checkMoreOponentPieces(player,opponent,i+2,j-2,1,-1,flagJogada);
+	}
+}
+
+void checkMoreOponentPieces(uint8_t player, uint8_t opponent,int16_t linha, int16_t coluna, int16_t incrLinha, int16_t incrColuna,bool flagJogada)
+{
+	int8_t i,j;
+
+
+	i=linha, j=coluna;
+
+
+	while(i<8 && i>=0 && j<8 && j>=0 && tabuleiroInicial[i][j]==opponent)
+	{
+		i=i+incrLinha;
+		j=j+incrColuna;
+	}
+
+	if(tabuleiroInicial[i][j]==0 && flagJogada==0)
+	{
+		tabuleiroInicial[i][j]=-player;
+	}
+
+
+
+}
+
+
+void drawPieces(uint8_t i, uint8_t j,uint8_t player)
+{
+	uint16_t pos_x=0;
+	uint16_t pos_y=0;
+
+	pos_x=10+(j)*50; //posição no LCD
+	pos_y=50+(i)*50;
+	if(player==1)
+	{
+		BSP_LCD_SetTextColor(LCD_COLOR_RED);
+		BSP_LCD_FillCircle(pos_x+25,pos_y+25,20);
+	}
+	else if(player==2)
+	{
+		BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+		BSP_LCD_FillCircle(pos_x+25,pos_y+25,20);
+	}
+}
+
+
+void turnPieces(uint8_t auxPlayer,uint8_t auxOpponent, int8_t linhaCelula, int8_t colunaCelula)
+{
+	int8_t i;
+	int8_t j;
+	int8_t auxLinha=linhaCelula;
+	int8_t auxColuna=colunaCelula;
+
+	for(i=-1;i<=1;i++)
+	{
+	        for(j=-1;j<=1;j++)
+	        {
+	        	if(tabuleiroInicial[linhaCelula+i][colunaCelula+j]!=auxPlayer && tabuleiroInicial[linhaCelula+i][colunaCelula+j]==auxOpponent)
+	        	{
+	        		linhaCelula=linhaCelula + i;
+	        		colunaCelula=colunaCelula + j;
+
+	        		if(tabuleiroInicial[linhaCelula+i][colunaCelula+j]==auxPlayer && linhaCelula+i!=auxLinha && colunaCelula+j !=auxColuna)
+	        		{
+	        			  drawPieces(linhaCelula-i,colunaCelula-j,auxPlayer);
+	        			  tabuleiroInicial[linhaCelula-i][colunaCelula-j]=auxPlayer;
+	        			  linhaCelula=linhaCelula - i;
+	        			  colunaCelula=colunaCelula - j;
+	        		}
+
+
+
+	        	}
+	        /*	if(tabuleiroInicial[linhaCelula+i][colunaCelula+j]==auxPlayer)
+	        	{
+	        		drawPieces(linhaCelula+i,colunaCelula+j,auxPlayer);
+	        		tabuleiroInicial[linhaCelula-i][colunaCelula-j]=auxPlayer;
+	        		linhaCelula=linhaCelula - i;
+	        		colunaCelula=colunaCelula - j;
+	        	}*/
+
+	        }
+
+	 }
+
+
+
+
+}
+
 
 
 /* USER CODE END 4 */
