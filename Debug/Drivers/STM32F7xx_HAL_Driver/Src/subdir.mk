@@ -24,10 +24,12 @@ C_SRCS += \
 ../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_pwr_ex.c \
 ../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_rcc.c \
 ../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_rcc_ex.c \
+../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sd.c \
 ../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sdram.c \
 ../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_tim.c \
 ../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_tim_ex.c \
-../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.c 
+../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.c \
+../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_sdmmc.c 
 
 OBJS += \
 ./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal.o \
@@ -50,10 +52,12 @@ OBJS += \
 ./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_pwr_ex.o \
 ./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_rcc.o \
 ./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_rcc_ex.o \
+./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sd.o \
 ./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sdram.o \
 ./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_tim.o \
 ./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_tim_ex.o \
-./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.o 
+./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.o \
+./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_sdmmc.o 
 
 C_DEPS += \
 ./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal.d \
@@ -76,10 +80,12 @@ C_DEPS += \
 ./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_pwr_ex.d \
 ./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_rcc.d \
 ./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_rcc_ex.d \
+./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sd.d \
 ./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sdram.d \
 ./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_tim.d \
 ./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_tim_ex.d \
-./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.d 
+./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.d \
+./Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_sdmmc.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -123,6 +129,8 @@ Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_rcc.o: ../Drivers/STM32F7xx_HAL_D
 	arm-none-eabi-gcc "$<" -mcpu=cortex-m7 -std=gnu11 -g3 -DUSE_HAL_DRIVER -DSTM32F769xx -DDEBUG -c -I../Inc -I../Drivers/CMSIS/Include -I../Drivers/CMSIS/Device/ST/STM32F7xx/Include -I../Drivers/STM32F7xx_HAL_Driver/Inc -I../Drivers/STM32F7xx_HAL_Driver/Inc/Legacy -I../Drivers/BSP/STM32F769I-Discovery -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_rcc.d" -MT"$@" --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -o "$@"
 Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_rcc_ex.o: ../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_rcc_ex.c
 	arm-none-eabi-gcc "$<" -mcpu=cortex-m7 -std=gnu11 -g3 -DUSE_HAL_DRIVER -DSTM32F769xx -DDEBUG -c -I../Inc -I../Drivers/CMSIS/Include -I../Drivers/CMSIS/Device/ST/STM32F7xx/Include -I../Drivers/STM32F7xx_HAL_Driver/Inc -I../Drivers/STM32F7xx_HAL_Driver/Inc/Legacy -I../Drivers/BSP/STM32F769I-Discovery -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_rcc_ex.d" -MT"$@" --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -o "$@"
+Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sd.o: ../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sd.c
+	arm-none-eabi-gcc "$<" -mcpu=cortex-m7 -std=gnu11 -g3 -DUSE_HAL_DRIVER -DSTM32F769xx -DDEBUG -c -I../Inc -I../Drivers/CMSIS/Include -I../Drivers/CMSIS/Device/ST/STM32F7xx/Include -I../Drivers/STM32F7xx_HAL_Driver/Inc -I../Drivers/STM32F7xx_HAL_Driver/Inc/Legacy -I../Drivers/BSP/STM32F769I-Discovery -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sd.d" -MT"$@" --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -o "$@"
 Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sdram.o: ../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sdram.c
 	arm-none-eabi-gcc "$<" -mcpu=cortex-m7 -std=gnu11 -g3 -DUSE_HAL_DRIVER -DSTM32F769xx -DDEBUG -c -I../Inc -I../Drivers/CMSIS/Include -I../Drivers/CMSIS/Device/ST/STM32F7xx/Include -I../Drivers/STM32F7xx_HAL_Driver/Inc -I../Drivers/STM32F7xx_HAL_Driver/Inc/Legacy -I../Drivers/BSP/STM32F769I-Discovery -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_sdram.d" -MT"$@" --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -o "$@"
 Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_tim.o: ../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_tim.c
@@ -131,4 +139,6 @@ Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_tim_ex.o: ../Drivers/STM32F7xx_HA
 	arm-none-eabi-gcc "$<" -mcpu=cortex-m7 -std=gnu11 -g3 -DUSE_HAL_DRIVER -DSTM32F769xx -DDEBUG -c -I../Inc -I../Drivers/CMSIS/Include -I../Drivers/CMSIS/Device/ST/STM32F7xx/Include -I../Drivers/STM32F7xx_HAL_Driver/Inc -I../Drivers/STM32F7xx_HAL_Driver/Inc/Legacy -I../Drivers/BSP/STM32F769I-Discovery -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_tim_ex.d" -MT"$@" --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -o "$@"
 Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.o: ../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.c
 	arm-none-eabi-gcc "$<" -mcpu=cortex-m7 -std=gnu11 -g3 -DUSE_HAL_DRIVER -DSTM32F769xx -DDEBUG -c -I../Inc -I../Drivers/CMSIS/Include -I../Drivers/CMSIS/Device/ST/STM32F7xx/Include -I../Drivers/STM32F7xx_HAL_Driver/Inc -I../Drivers/STM32F7xx_HAL_Driver/Inc/Legacy -I../Drivers/BSP/STM32F769I-Discovery -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_fmc.d" -MT"$@" --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -o "$@"
+Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_sdmmc.o: ../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_sdmmc.c
+	arm-none-eabi-gcc "$<" -mcpu=cortex-m7 -std=gnu11 -g3 -DUSE_HAL_DRIVER -DSTM32F769xx -DDEBUG -c -I../Inc -I../Drivers/CMSIS/Include -I../Drivers/CMSIS/Device/ST/STM32F7xx/Include -I../Drivers/STM32F7xx_HAL_Driver/Inc -I../Drivers/STM32F7xx_HAL_Driver/Inc/Legacy -I../Drivers/BSP/STM32F769I-Discovery -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_ll_sdmmc.d" -MT"$@" --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -o "$@"
 

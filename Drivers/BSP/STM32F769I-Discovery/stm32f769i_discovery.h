@@ -78,6 +78,9 @@ typedef enum
  LED_RED = LED1,
  LED2 = 1,
  LED_GREEN = LED2
+
+
+
 } Led_TypeDef;
 
 /** @brief Button_TypeDef
@@ -188,8 +191,8 @@ typedef enum
 /**
   * @brief SD-detect signal
   */
-#define SD_DETECT_PIN                        ((uint32_t)GPIO_PIN_15)
-#define SD_DETECT_GPIO_PORT                  ((GPIO_TypeDef*)GPIOI)
+//#define SD_DETECT_PIN                        ((uint32_t)GPIO_PIN_15)
+//#define SD_DETECT_GPIO_PORT                  ((GPIO_TypeDef*)GPIOI)
 #define SD_DETECT_GPIO_CLK_ENABLE()          __HAL_RCC_GPIOI_CLK_ENABLE()
 #define SD_DETECT_GPIO_CLK_DISABLE()         __HAL_RCC_GPIOI_CLK_DISABLE()
 #define SD_DETECT_EXTI_IRQn                  EXTI15_10_IRQn
