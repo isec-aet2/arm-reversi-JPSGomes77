@@ -63,8 +63,8 @@ bool nextPlayerRound=0;	 			//Flag para passar para o próximo jogador
 bool gameoverFlag=0;				//Flag para acabar o jogo
 bool player1LoseFlag=0;				//Flag player 1 perdeu
 bool player2LoseFlag=0;				//Flag player 2 perdeu
-bool endGameFlag1=0;				//Flag acabou o jogo (não haver mais jogadas possiveis jogador 1)
-bool endGameFlag2=0;				//Flag acabou o jogo (não haver mais jogadas possiveis jogador 1)
+bool noMovesFlag1=0;				//Flag jogadas possiveis jogador 1
+bool noMovesFlag2=0;				//Flag jogadas possiveis jogador 2
 bool blueButtonFlag=0;				//Flag do botão azul
 bool touchScreenFlag=0;				//Flag de deteção do touch screen
 uint8_t minute=0;					//minutos do tempo de jogo
@@ -82,6 +82,7 @@ uint8_t scorePlayer2=0;
 uint8_t countPlayer1Pieces=0;		//contador de peças do jogador
 uint8_t countPlayer2Pieces=0;
 uint8_t filecount=0;				//contador para atribuir nome aos ficheiros criados no final de cada jogo
+uint8_t countAvailable=0;
 int nBytes=16;
 
 // matrizes para os tabuleiros (inicial e de jogo)
@@ -1024,7 +1025,8 @@ void showRoundTimeLeft()
 		flagTimer7_roundtimeleft=0;
 		timeLeft--;
 		if(timeLeft==0){
-			nextPlayerRound=1;}
+			nextPlayerRound=1; //se esta variavel estiver activa, passa para o proximo jogador
+		}
 
 		BSP_LCD_SetFont(&Font16);
 		BSP_LCD_SetTextColor(LCD_COLOR_BLUE);
@@ -1043,8 +1045,8 @@ void jogadaHH(player *currPlayer)
 	char string[50];
 	uint16_t pos_x=0;
 	uint16_t pos_y=0;
-	uint8_t auxPlayer;
-	uint8_t auxOpponent;
+	//uint8_t auxPlayer;
+	//uint8_t auxOpponent;
 
 	if(gameHH==1){
 
@@ -1090,7 +1092,7 @@ void jogadaHH(player *currPlayer)
 		}
 
 
-		if(gameStart && nextPlayerRound==0 && (endGameFlag1==0 || endGameFlag2==0))
+		if(gameStart && nextPlayerRound==0 && (noMovesFlag1==0 || noMovesFlag2==0))
 		{
 				BSP_LCD_SetFont(&Font16);
 				BSP_LCD_SetTextColor(currPlayer->pieceColor);
@@ -1120,32 +1122,52 @@ void jogadaHH(player *currPlayer)
 						{
 							tabuleiroJogo[linhaCelula][colunaCelula]=currPlayer->ID; //coloca peça na variavel tabuleiro
 
-							auxPlayer=(currPlayer->ID);
-							if(auxPlayer==1)
-								auxOpponent=2;
-
-							else if(auxPlayer==2)
-								auxOpponent=1;
-
 							pos_x=10+(colunaCelula)*BOARDCELLSIZE; //posição no LCD
 							pos_y=50+(linhaCelula)*BOARDCELLSIZE;
 
 							BSP_LCD_SetTextColor(currPlayer->pieceColor); //colocar a peça no LCD
 							BSP_LCD_FillCircle(pos_x+BOARDCELLSIZE/2,pos_y+BOARDCELLSIZE/2,PIECESIZE);
 
-							turnPieces(auxPlayer,auxOpponent,linhaCelula,colunaCelula); //muda a cor as peças do adversário
+
+
+							//auxPlayer=(currPlayer->ID);
+							//if(auxPlayer==1)
+							//	auxOpponent=2;
+							//else if(auxPlayer==2)
+							//	auxOpponent=1;
+						//	turnPieces(auxPlayer,auxOpponent,linhaCelula,colunaCelula); //muda a cor as peças do adversário
 
 
 							if(currPlayer->ID==1)
 							{
-								jogador=2;
 								*currPlayer=jogador2;
+								countAvailable=0;
 								checkAvailable(jogador2.ID);
-								if(endGameFlag2==1)
-								{
+								if(countAvailable>0)
+									noMovesFlag2=0;
 
+								if(countAvailable==0)
+								{
+									noMovesFlag2=1;
+									BSP_LCD_SetFont(&Font16);
+									BSP_LCD_SetTextColor(LCD_COLOR_RED);
+									sprintf(string, "P2 - No valid Moves");
+									BSP_LCD_DisplayStringAt(200,LINE(11), (uint8_t *)string, CENTER_MODE);
 									*currPlayer=jogador1;
+									countAvailable=0;
 									checkAvailable(jogador1.ID);
+
+									if(countAvailable>0)
+										noMovesFlag1=0;
+
+									if(countAvailable==0)
+									{
+										noMovesFlag1=1;
+										BSP_LCD_SetFont(&Font16);
+										BSP_LCD_SetTextColor(LCD_COLOR_RED);
+										sprintf(string, "P1 - No valid Moves");
+										BSP_LCD_DisplayStringAt(200,LINE(10), (uint8_t *)string, CENTER_MODE);
+									}
 								}
 
 								BSP_LCD_ClearStringLine(2);
@@ -1155,17 +1177,31 @@ void jogadaHH(player *currPlayer)
 
 							if(currPlayer->ID==2)
 							{
-								jogador=1;
 								*currPlayer=jogador1;
-								checkAvailable(jogador);
-								if(endGameFlag1==1)
+								countAvailable=0;
+								checkAvailable(jogador1.ID);
+								if(countAvailable>0)
+									noMovesFlag1=0;
+
+								if(countAvailable==0)
 								{
 									BSP_LCD_SetFont(&Font16);
 									BSP_LCD_SetTextColor(LCD_COLOR_RED);
-									sprintf(string, "No valid Moves");
-									BSP_LCD_DisplayStringAt(250,LINE(8), (uint8_t *)string, CENTER_MODE);
+									sprintf(string, "P1 - No valid Moves");
+									BSP_LCD_DisplayStringAt(200,LINE(10), (uint8_t *)string, CENTER_MODE);
 									*currPlayer=jogador2;
+									countAvailable=0;
 									checkAvailable(jogador2.ID);
+									if(countAvailable>0)
+										noMovesFlag2=0;
+									if(countAvailable==0)
+									{
+										noMovesFlag2=1;
+										BSP_LCD_SetFont(&Font16);
+										BSP_LCD_SetTextColor(LCD_COLOR_RED);
+										sprintf(string, "P2 - No valid Moves");
+										BSP_LCD_DisplayStringAt(200,LINE(11), (uint8_t *)string, CENTER_MODE);
+									}
 
 								}
 								BSP_LCD_ClearStringLine(2);
@@ -1186,44 +1222,40 @@ void jogadaHA(player *currPlayer)
 	char string[50];
 	uint16_t pos_x=0;
 	uint16_t pos_y=0;
-	uint8_t auxPlayer=1;
-	uint8_t auxOpponent=2;
+	//uint8_t auxPlayer=1;
+	//uint8_t auxOpponent=2;
 	uint8_t celula=0;
 
+	//se é o jogo Human vs ARM
 	if(gameHA==1)
 	{
-
+		//se o jogo começou e se foi timeout do jogador
 		if(gameStart && nextPlayerRound==1)
 		{
-			nextPlayerRound=0;
-			timeLeft=20;
-			BSP_LCD_ClearStringLine(2);
+			nextPlayerRound=0; 	//limpa a flag
+			timeLeft=20;		//reinicializa o tempo disponivel para a jogada
+			BSP_LCD_ClearStringLine(2);	//limpa o campo onde mostra o jogador que está a jogar
 
 			if(currPlayer->ID==1)
 			{
-				timeoutCounterPlayer1--;
+				timeoutCounterPlayer1--; //se foi o Player 1, conta -1 timeout disponivel
 
-
-				if(timeoutCounterPlayer1==0)
+				if(timeoutCounterPlayer1==0) // se não tem mais timeouts
 				{
-					gameStart=0;
-					gameoverFlag=1;
-					player1LoseFlag=1;
+					gameStart=0;			//acaba o jogo
+					player1LoseFlag=1;		//esta flag vai activar a função Gameover
 					return;
 				}
-
-				*currPlayer=arm;
+				*currPlayer=arm;	//se ainda há timeouts passa para o outro jogador
 				return;
 			}
-
-
 		}
 
-
-		if(gameStart && nextPlayerRound==0 && (endGameFlag1==0 || endGameFlag2==0))
+		//se o jogo está a decorrer, continua o mesmo jogador(não deixou passar o tempo ainda)
+		// e há jogadas disponiveis para pelo menos 1 jogador
+		if(gameStart && nextPlayerRound==0 && (noMovesFlag1==0 || noMovesFlag2==0))
 		{
-
-
+			//escreve o campo onde indica o jogador, o tempo que resta para jogar e os timeouts disponiveis
 				BSP_LCD_SetFont(&Font16);
 				BSP_LCD_SetTextColor(currPlayer->pieceColor);
 				sprintf(string,"%s round:",currPlayer->name);
@@ -1238,39 +1270,58 @@ void jogadaHA(player *currPlayer)
 
 				if(currPlayer->ID==2)//jogada ARM
 				{
-					celula=checkPossiblePlaysforArM();
+					celula=checkPossiblePlaysforArM();	//verificar as jogadas disponiveis
 
-					colunaCelula = celula%10;
+					colunaCelula = celula%10;	//o valor de retorno é a célula de um vector com 2 digitos
 					linhaCelula  = celula/10;
 
 
-					tabuleiroJogo[linhaCelula][colunaCelula]=currPlayer->ID;
+					tabuleiroJogo[linhaCelula][colunaCelula]=currPlayer->ID;	//coloca na matriz
 					pos_x=10+(colunaCelula)*50; //posição no LCD
 					pos_y=50+(linhaCelula)*50;
-					turnPieces(auxPlayer,auxOpponent,linhaCelula,colunaCelula);
-					BSP_LCD_SetTextColor(currPlayer->pieceColor);
+					//turnPieces(auxPlayer,auxOpponent,linhaCelula,colunaCelula);
+					BSP_LCD_SetTextColor(currPlayer->pieceColor); // coloca a peça no LCD
 					BSP_LCD_FillCircle(pos_x+25,pos_y+25,20);
 
-					jogador=1;
-					*currPlayer=jogador1;
-					checkAvailable(jogador);
-					if(endGameFlag1==1)
+
+					*currPlayer=jogador1;	//muda para o jogador1
+					countAvailable=0;
+					checkAvailable(jogador1.ID);	//verifica as posições disponiveis e conta-as
+
+					if(countAvailable>0)		//se houver, coloca a flag a 0
+						noMovesFlag1=0;
+
+					if(countAvailable==0)		//se não houver posições disponiveis
 					{
+						noMovesFlag1=1;				//flag a indicar que não tem posições disponiveis, fica a 1
 						BSP_LCD_SetFont(&Font16);
 						BSP_LCD_SetTextColor(LCD_COLOR_RED);
-						sprintf(string, "No valid Moves");
-						BSP_LCD_DisplayStringAt(250,LINE(8), (uint8_t *)string, CENTER_MODE);
-						*currPlayer=arm;
-						checkAvailable(arm.ID);
+						sprintf(string, "P1 - No valid Moves");
+						BSP_LCD_DisplayStringAt(200,LINE(10), (uint8_t *)string, CENTER_MODE);
+						*currPlayer=arm;		//fica no mesmo jogador
+						countAvailable=0;
+						checkAvailable(arm.ID);	//vai verificar se existem posições disponiveis
+
+						if(countAvailable>0)	//se houver, coloca a flag a 0
+							noMovesFlag2=0;
+
+						if(countAvailable==0)	//se não houver, coloca a flag a 1
+						{
+							noMovesFlag2=1;
+							BSP_LCD_SetFont(&Font16);
+							BSP_LCD_SetTextColor(LCD_COLOR_RED);
+							sprintf(string, "ARM - No valid Moves");
+							BSP_LCD_DisplayStringAt(200,LINE(11), (uint8_t *)string, CENTER_MODE);
+						}
 					}
 					BSP_LCD_ClearStringLine(2);
 					timeLeft=20;
 					return;
-
+					//------------------fim da jogada do ARM----------------------
 
 				}
 
-				if(touchScreenFlag==1 && currPlayer->ID==1)
+				if(touchScreenFlag==1 && currPlayer->ID==1) //se TS e é o jogador 1 a jogar
 				{
 					touchScreenFlag=0;
 
@@ -1285,35 +1336,54 @@ void jogadaHA(player *currPlayer)
 						if(tabuleiroJogo[linhaCelula][colunaCelula]==-(currPlayer->ID))
 						{
 							tabuleiroJogo[linhaCelula][colunaCelula]=currPlayer->ID; //coloca peça na variavel tabuleiro
+							//----------esta parte serve para mudar as peças de cor
+							// não está a funcionar correctamente
+							//auxPlayer=(currPlayer->ID);
+							//if(auxPlayer==1)
+							//	auxOpponent=2;
 
-							auxPlayer=(currPlayer->ID);
-							if(auxPlayer==1)
-								auxOpponent=2;
+							//else if(auxPlayer==2)
+							//	auxOpponent=1;
+							//turnPieces(auxPlayer,auxOpponent,linhaCelula,colunaCelula);
+							//-------------------------------
 
-							else if(auxPlayer==2)
-								auxOpponent=1;
+							pos_x=10+(colunaCelula)*BOARDCELLSIZE; //posição no LCD
+							pos_y=50+(linhaCelula)*BOARDCELLSIZE;
 
-							pos_x=10+(colunaCelula)*50; //posição no LCD
-							pos_y=50+(linhaCelula)*50;
-
-							turnPieces(auxPlayer,auxOpponent,linhaCelula,colunaCelula);
-
-
-							BSP_LCD_SetTextColor(currPlayer->pieceColor);
+							BSP_LCD_SetTextColor(currPlayer->pieceColor); // coloca a peça no LCD
 							BSP_LCD_FillCircle(pos_x+25,pos_y+25,20);
 
 
-								jogador=2;
-								*currPlayer=arm;
-								checkAvailable(arm.ID);
-								if(endGameFlag2==1)
+
+								*currPlayer=arm;	//muda de jogador
+								countAvailable=0;
+								checkAvailable(arm.ID);	//verifica as posições disponiveis
+								if(countAvailable>0)		//se houver, coloca a flag a 0
+									noMovesFlag2=0;
+
+								if(countAvailable==0)		//se não houver posições disponiveis
 								{
+									noMovesFlag2=1;
+
 									BSP_LCD_SetFont(&Font16);
 									BSP_LCD_SetTextColor(LCD_COLOR_RED);
-									sprintf(string, "No valid Moves");
-									BSP_LCD_DisplayStringAt(250,LINE(8), (uint8_t *)string, CENTER_MODE);
-									*currPlayer=jogador1;
-									checkAvailable(jogador1.ID);
+									sprintf(string, "ARM - No valid Moves");
+									BSP_LCD_DisplayStringAt(200,LINE(11), (uint8_t *)string, CENTER_MODE);
+									*currPlayer=jogador1; //fica no mesmo jogador
+									countAvailable=0;
+									checkAvailable(jogador1.ID); // //vai verificar se existem posições disponiveis
+
+									if(countAvailable>0)		//houver posições disponiveis
+										noMovesFlag1=0;
+
+									if(countAvailable==0)
+									{
+										noMovesFlag1=1;
+										BSP_LCD_SetFont(&Font16);
+										BSP_LCD_SetTextColor(LCD_COLOR_RED);
+										sprintf(string, "P1 - No valid Moves");
+										BSP_LCD_DisplayStringAt(200,LINE(10), (uint8_t *)string, CENTER_MODE);
+									}
 								}
 
 								BSP_LCD_ClearStringLine(2);
@@ -1323,7 +1393,6 @@ void jogadaHA(player *currPlayer)
 						}
 					}
 				}
-
 	}
 }
 
@@ -1339,14 +1408,12 @@ void menu()
 	 if(touchScreenFlag==1 && gameStart==0)
 	 {
 
-
 		 touchScreenFlag=0;
 
 		 if(TS_State.touchX[0]>200 && TS_State.touchX[0]<600 && TS_State.touchY[0]>100 && TS_State.touchY[0]<300)
 		 {
 			 BSP_LCD_Clear(LCD_COLOR_WHITE);
 			 displayGame();
-
 		 }
 
 
@@ -1365,13 +1432,13 @@ void menu()
 			 scorePlayer1=0;
 			 scorePlayer2=0;
 			 gameHH=1;	//Flag para iniciar o jogo Human vs Human
+			 gameHA=0;
 			 gameStart=1;
+			 noMovesFlag1=0;
+			 noMovesFlag2=0;
 			 timeLeft=20;
 			 timeoutCounterPlayer1=3;
 			 timeoutCounterPlayer2=3;
-
-
-
 		 }
 
 		 if(TS_State.touchX[0]>455 && TS_State.touchX[0]<755 && TS_State.touchY[0]>310 && TS_State.touchY[0]<360)
@@ -1385,21 +1452,21 @@ void menu()
 			 startTimer=1; // Flag para iniciar o contador de tempo de jogo na função showGameTime
 			 	 	 	   //e o contador de tempo restante da jogada na função showRoundTimeLeft
 			 timeoutCounterPlayer1=3;
+			 scorePlayer1=0;
+			 scorePlayer2=0;
 			 gameHA=1;
+			 gameHH=0;
+			 noMovesFlag1=0;
+			 noMovesFlag2=0;
 			 gameStart=1;
 			 timeLeft=20;
-
-
 		 }
 
 		 if(TS_State.touchX[0]>455 && TS_State.touchX[0]<755 && TS_State.touchY[0]>370 && TS_State.touchY[0]<420)
 		 {
-			 BSP_LCD_SetTextColor(LCD_COLOR_CYAN); //Ver Highscores
+			 BSP_LCD_SetTextColor(LCD_COLOR_CYAN);
 			 BSP_LCD_FillRect(455,370,300,50);
 		 }
-
-
-
 	 }
 }
 
@@ -1411,14 +1478,12 @@ void LoadInitialBoard()
 	uint16_t coluna=0;
 
 	for(i=0;i<8;i++)
+	{
+		for(j=0;j<8;j++)
 		{
-			for(j=0;j<8;j++)
-			{
-				tabuleiroJogo[i][j]=tabuleiroInicial[i][j];
-			}
+			tabuleiroJogo[i][j]=tabuleiroInicial[i][j];
 		}
-
-
+	}
 
 	for(i=0;i<BOARDSIZE;i++)
 	{
@@ -1449,7 +1514,6 @@ void checkNumberOfPieces()
 	uint8_t i,j;
 	countPlayer1Pieces=0;
 	countPlayer2Pieces=0;
-
 
 	for(i=0;i<8;i++)
 	{
@@ -1505,7 +1569,6 @@ uint8_t checkPossiblePlaysforArM()
 		sprintf(string, "ARM Calculating Things");
 		BSP_LCD_DisplayStringAt(200,LINE(9), (uint8_t *)string, CENTER_MODE);
 
-
 		int r = rand() % k;
 
 		aux=possible[r];
@@ -1527,11 +1590,10 @@ void checkAvailable(uint8_t player)
 	else if(player==2)
 		opponent=1;
 
-
 	//percorrer a matriz para ver onde estão as peças do jogador
-	for(i=0;i<8;i++)
+	for(i=0;i<BOARDSIZE;i++)
 	{
-			for(j=0;j<8;j++)
+			for(j=0;j<BOARDSIZE;j++)
 			{
 				if(tabuleiroJogo[i][j]==player) //se encontra a peça do jogador
 				{
@@ -1540,7 +1602,6 @@ void checkAvailable(uint8_t player)
 				}
 			}
 	}
-
 
 }
 
@@ -1576,6 +1637,7 @@ void checkAdjacent(uint8_t player, uint8_t opponent,uint8_t i, uint8_t j)
 
 void checkMoreOponentPieces(uint8_t player, uint8_t opponent,int16_t linha, int16_t coluna, int16_t incrLinha, int16_t incrColuna)
 {
+	char string[30];
 
 	//percorre a respectiva direção até aos limites da matriz ou até que a peça seja diferente do adversário
 
@@ -1588,16 +1650,11 @@ void checkMoreOponentPieces(uint8_t player, uint8_t opponent,int16_t linha, int1
 	if(tabuleiroJogo[linha][coluna]==0)
 	{
 		tabuleiroJogo[linha][coluna]=-player;
-
-		if(player==1)
-		{
-			endGameFlag1=0;
-		}
-
-		if(player==2)
-		{
-			endGameFlag2=0;
-		}
+		countAvailable++;
+		BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+		sprintf(string, "ARM - No valid Moves");
+		BSP_LCD_DisplayStringAt(200,LINE(10), (uint8_t *)string, CENTER_MODE);
+		BSP_LCD_DisplayStringAt(200,LINE(11), (uint8_t *)string, CENTER_MODE);
 	}
 }
 
@@ -1643,16 +1700,14 @@ void turnPieces(uint8_t auxPlayer,uint8_t auxOpponent, int8_t linhaCelula, int8_
 	        	}
 	        	if(tabuleiroJogo[auxlinha][auxcoluna]==auxPlayer)
 	        	{
+	        		//while(tabuleiroJogo[auxlinha][colunaCelula]!=auxPlayer)
+	        		//{
 	        		tabuleiroJogo[auxlinha-i][auxcoluna-j]=auxPlayer;
 	        		drawPieces(auxlinha-i,auxcoluna-j,auxPlayer);
-
+	        		//}
 	        	}
 	        }
-
 	 }
-
-
-
 
 }
 
@@ -1669,11 +1724,11 @@ void gameOver()
 	char fileName[50];
 
 
-	if(gameoverFlag==1 || (endGameFlag1==1 && endGameFlag2==1))
+	if(player1LoseFlag==1 || player2LoseFlag==1 || (noMovesFlag1==1 && noMovesFlag2==1))
 	{
-		gameoverFlag=0;
-		endGameFlag2=0;
-		endGameFlag1=0;
+
+		continueFlag=0;
+		gameoverFlag=0; //timeout gameover
 		gameStart=0;
 		startTimer=0;
 		timePlayedMinutes =minute;
@@ -1683,7 +1738,6 @@ void gameOver()
 		p2Pieces = countPlayer2Pieces;
 		countPlayer1Pieces=0;
 		countPlayer2Pieces=0;
-
 		BSP_LCD_SetTextColor(LCD_COLOR_LIGHTBLUE);
 		BSP_LCD_FillRect(200,100,400,200);
 		BSP_LCD_SetTextColor(LCD_COLOR_RED);
@@ -1692,7 +1746,7 @@ void gameOver()
 		BSP_LCD_DisplayStringAt(10,110, (uint8_t *)string, CENTER_MODE);
 		BSP_LCD_SetFont(&Font16);
 		sprintf(string, "Player1:%d pieces  Player2:%d pieces",p1Pieces,p2Pieces);
-		BSP_LCD_DisplayStringAt(10,150, (uint8_t *)string, CENTER_MODE);
+		BSP_LCD_DisplayStringAt(5,150, (uint8_t *)string, CENTER_MODE);
 		sprintf(string, "Press to Continue");
 		BSP_LCD_DisplayStringAt(10,200, (uint8_t *)string, CENTER_MODE);
 
@@ -1705,7 +1759,7 @@ void gameOver()
 		if(player1LoseFlag==1)
 		{
 			player1LoseFlag=0;
-			sprintf(string, "Player2 Wins by Timeout");
+			sprintf(string, "Player2 Wins by Timeout!!!");
 			BSP_LCD_DisplayStringAt(10,250, (uint8_t *)string, CENTER_MODE);
 			winner=2;
 		}
@@ -1713,11 +1767,38 @@ void gameOver()
 		if(player2LoseFlag==1)
 		{
 			player2LoseFlag=0;
-			sprintf(string, "Player1 Wins by Timeout");
+			sprintf(string, "Player1 Wins by Timeout!!!");
 			BSP_LCD_DisplayStringAt(10,250, (uint8_t *)string, CENTER_MODE);
 			winner=1;
 		}
 
+
+		if(noMovesFlag1==1 && noMovesFlag2==1)
+		{
+
+			noMovesFlag1=0;
+			noMovesFlag2=0;
+
+			if(p1Pieces>p2Pieces)
+			{
+				sprintf(string, "Player1 Wins!!!");
+				BSP_LCD_DisplayStringAt(10,250, (uint8_t *)string, CENTER_MODE);
+				winner=1;
+			}
+
+			else if(p2Pieces>p1Pieces)
+			{
+				sprintf(string, "Player2 Wins!!!");
+				BSP_LCD_DisplayStringAt(10,250, (uint8_t *)string, CENTER_MODE);
+				winner=2;
+			}
+			else if(p2Pieces==p1Pieces)
+			{
+				sprintf(string, "It's a tie!!!!");
+				BSP_LCD_DisplayStringAt(10,250, (uint8_t *)string, CENTER_MODE);
+				winner=13;
+			}
+		}
 
 		if(f_mount(&SDFatFS,SDPath,0)!=FR_OK)
 		  		Error_Handler();
@@ -1730,7 +1811,6 @@ void gameOver()
 
 		sprintf(string,"Game Stats:Time played:%dm%ds, P1 Pieces:%d, P2 Pieces:%d, Winner:Player%d",timePlayedMinutes,timePlayedSeconds,p1Pieces,p2Pieces,winner);
 		if(f_write(&SDFile,string,strlen(string),*&nBytes)!=FR_OK)
-
 			  	Error_Handler();
 
 
