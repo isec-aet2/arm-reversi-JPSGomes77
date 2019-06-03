@@ -85,6 +85,7 @@ uint8_t filecount=0;				//contador para atribuir nome aos ficheiros criados no f
 uint8_t countAvailable=0;
 int nBytes=16;
 uint8_t gamecount=1;
+uint8_t numberOfTurn=0;
 
 // matrizes para os tabuleiros (inicial e de jogo)
 
@@ -195,6 +196,9 @@ void jogadaArM();										//jogada do ARM
 uint8_t countAvailableCellsToPlay(uint8_t piece);       //conta as posições disponiveis para o adversario jogar
 void clearNoMovestrings();								//limpa a informação de não haver movimentos disponiveis
 
+void ResetGameTime();
+
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -290,7 +294,7 @@ int main(void)
 
 
 
-  strcpy(jogador1.name,"Player1");
+  strcpy(jogador1.name,"Joao");
   jogador1.pieceColor=LCD_COLOR_RED;
   jogador1.ID=1;
 
@@ -327,6 +331,7 @@ int main(void)
 	  showGameTime();
 	  showRoundTimeLeft();
 	  InterruptResetWithBlueButton();
+	  ResetGameTime();
 
 	  menu();
 	  jogo();
@@ -982,9 +987,27 @@ static void displayTemperature()
 	  		sprintf(string, "Int. Temp:%ld'C", JTemp);
 	  		BSP_LCD_DisplayStringAt(0,LINE(29), (uint8_t *)string, RIGHT_MODE);
 	  		BSP_LCD_ClearStringLine(30);
+
 	}
 }
 
+
+//********************EXTRA GOAL
+void ResetGameTime()
+{
+	 if(touchScreenFlag==1 && startTimer==1)
+	 {
+		 touchScreenFlag=0;
+
+		 if(TS_State.touchX[0]>500 && TS_State.touchX[0]<700 && TS_State.touchY[0]>100 && TS_State.touchY[0]<150)
+		 {
+			 	 minute=0;
+			 	 second=0;
+		 }
+	 }
+}
+
+//********************************************
 
 void showGameTime()
 {
@@ -1007,6 +1030,7 @@ void showGameTime()
 		BSP_LCD_SetTextColor(LCD_COLOR_BLUE);
 		sprintf(string, "Game Time: %im%2is",minute,second);
 		BSP_LCD_DisplayStringAt(200,LINE(8), (uint8_t *)string, CENTER_MODE);
+
 
 	}
 }
@@ -1164,15 +1188,35 @@ void ClearPlayerRoundInfo()
 	sprintf(string,"%s round:",adversario.name);
 	BSP_LCD_DisplayStringAt(30,LINE(2), (uint8_t *)string, LEFT_MODE);
 
+	BSP_LCD_SetFont(&Font16);
+	BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+	sprintf(string, "P1 is winning");
+	BSP_LCD_DisplayStringAt(400,LINE(29), (uint8_t *)string, LEFT_MODE);
+	sprintf(string, "P2 is winning");
+	BSP_LCD_DisplayStringAt(400,LINE(29), (uint8_t *)string, LEFT_MODE);
+	sprintf(string, "Tie");
+	BSP_LCD_DisplayStringAt(400,LINE(29), (uint8_t *)string, LEFT_MODE);
+
 }
 
 
 void writePlayerRoundInfo()
 {
 	char string[50];
+	uint8_t p1Pieces=0;
+	uint8_t p2Pieces=0;
 
 	if(gameStart)
 	{
+
+		//********EXTRA GOAL
+		if(jogador.ID==1)
+		{
+		numberOfTurn++;
+		}
+		//******************
+
+
 		BSP_LCD_SetFont(&Font16);
 		BSP_LCD_SetTextColor(jogador.pieceColor);
 		sprintf(string,"%s round:",jogador.name);
@@ -1185,6 +1229,36 @@ void writePlayerRoundInfo()
 
 		BSP_LCD_DisplayStringAt(350,LINE(2), (uint8_t *)string, LEFT_MODE);
 		BSP_LCD_FillCircle(20,37,5);
+
+		//****************EXTRA GOAL*********************
+
+		checkNumberOfPieces(); //contar as peças de cada jogador
+		p1Pieces = countPlayer1Pieces;
+		p2Pieces = countPlayer2Pieces;
+
+		BSP_LCD_SetFont(&Font16);
+		BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+		sprintf(string, "P1:%d pieces; P2:%d pieces",p1Pieces,p2Pieces);
+		BSP_LCD_DisplayStringAt(0,LINE(29), (uint8_t *)string, LEFT_MODE);
+
+		if(p1Pieces>p2Pieces)
+		{
+			sprintf(string, "P1 is winning");
+			BSP_LCD_DisplayStringAt(400,LINE(29), (uint8_t *)string, LEFT_MODE);
+		}
+		if(p1Pieces<p2Pieces)
+		{
+			sprintf(string, "P2 is winning");
+					BSP_LCD_DisplayStringAt(400,LINE(29), (uint8_t *)string, LEFT_MODE);
+		}
+		if(p1Pieces==p2Pieces)
+		{
+			sprintf(string, "Tie");
+					BSP_LCD_DisplayStringAt(400,LINE(29), (uint8_t *)string, LEFT_MODE);
+		}
+		//*****************************************
+
+
 	}
 }
 
@@ -1248,7 +1322,7 @@ void jogadaArM()
 		{
 			if(tabuleiroJogo[i][j]==-2)
 			{
-				possible[k]=i*10+j;
+				possible[k]=10*i+j;
 				k++;
 			}
 		}
@@ -1391,7 +1465,7 @@ void InitializeVariables()
 
 	BSP_LCD_SetFont(&Font16);
 	BSP_LCD_SetTextColor(LCD_COLOR_BLUE);
-
+	numberOfTurn=0;
 	minute=0,second=0;
 	startTimer=1;
 	scorePlayer1=0;
@@ -1542,13 +1616,13 @@ void checkAdjacent(uint8_t player, uint8_t opponent,uint8_t linha, uint8_t colun
 
 					if(player==1)
 					{
-						BSP_LCD_SetTextColor(LCD_COLOR_BROWN);
+						BSP_LCD_SetTextColor(LCD_COLOR_RED);
 						BSP_LCD_FillCircle(pos_x+BOARDCELLSIZE/2,pos_y+BOARDCELLSIZE/2,5);
 					}
 
 					if(player==2)
 					{
-						BSP_LCD_SetTextColor(LCD_COLOR_CYAN);
+						BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
 						BSP_LCD_FillCircle(pos_x+BOARDCELLSIZE/2,pos_y+BOARDCELLSIZE/2,5);
 					}
 				//--------------------------------até aqui
@@ -1635,7 +1709,7 @@ void gameOver()
 	uint8_t p1Pieces=0;
 	uint8_t p2Pieces=0;
 	uint8_t winner=0;
-	char string[100];
+	char string[200];
 
 
 
@@ -1710,9 +1784,9 @@ void gameOver()
 
 
 
-		sprintf(string,"Game%d Stats:Time played:%dm%ds, P1 Pieces:%d, P2 Pieces:%d, Winner:Player%d",gamecount,timePlayedMinutes,timePlayedSeconds,p1Pieces,p2Pieces,winner);
+		sprintf(string,"Game %d Stats:Time played:%dm%ds, P1-%s Pieces:%d, P2-%s Pieces:%d, Winner:Player%d, Number of Turn:%d",gamecount,timePlayedMinutes,timePlayedSeconds,jogador1.name,p1Pieces,jogador2.name,p2Pieces,winner,numberOfTurn);
 		if(f_write(&SDFile,string,strlen(string),*&nBytes)!=FR_OK)
-			  	Error_Handler();
+			Error_Handler();
 
 
 
